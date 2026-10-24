@@ -1,5 +1,7 @@
 # Unreleased
 
+* Add `Category`, `CATEGORIES` and the `categories` module, one constant per
+  section of the upstream list (e.g. `categories::SQL_INJECTION`).
 * The crate is now `#![no_std]`.
 * The generator moved to the `make-lib` workspace member, so `serde_json` is
   no longer a dependency of the crate.

@@ -1,10 +1,23 @@
 # rust-naughty-strings
 Rust binding of [minimaxir's Big List Of Naughty Strings][minimaxir-blns].
 
-The crate only provides one array `naughty_strings::BLNS: &[&str]`:
+The whole list is the array `naughty_strings::BLNS: &[&str]`:
 ```rust
 fn main() {
     for ns in naughty_strings::BLNS {
+        println!("{}", ns);
+    }
+}
+```
+
+The strings are also grouped by the categories of the upstream list, such as
+`naughty_strings::categories::SQL_INJECTION`, and `naughty_strings::CATEGORIES`
+lists all of them:
+```rust
+use naughty_strings::categories::SQL_INJECTION;
+
+fn main() {
+    for ns in SQL_INJECTION.strings {
         println!("{}", ns);
     }
 }
