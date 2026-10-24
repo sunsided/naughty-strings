@@ -11,8 +11,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .nth(1)
         .unwrap_or_else(|| NAUGHTY_REPO_URL.into());
 
-    let blns = fetch_blns_json(&repo)?;
-    let blns: Vec<String> = serde_json::from_str(&blns)?;
+    let blns = parse(&fetch_blns_txt(&repo)?);
 
     let output = Path::new(env!("CARGO_MANIFEST_DIR")).join("../src/blns.rs");
     fs::write(&output, render(&blns))?;
@@ -21,8 +20,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-/// Clones `repo` into a temporary directory and returns the contents of its `blns.json`.
-fn fetch_blns_json(repo: &str) -> Result<String, Box<dyn Error>> {
+/// Clones `repo` into a temporary directory and returns the contents of its `blns.txt`.
+///
+/// `blns.txt` is the canonical list; upstream's `blns.json` is generated from it
+/// and has not been regenerated since the 2021 updates.
+fn fetch_blns_txt(repo: &str) -> Result<String, Box<dyn Error>> {
     let out_dir = std::env::var_os("OUT_DIR")
         .map(Into::into)
         .unwrap_or_else(std::env::temp_dir)
@@ -38,7 +40,7 @@ fn fetch_blns_json(repo: &str) -> Result<String, Box<dyn Error>> {
 
     // Read before cleaning up so the file is not deleted while still open.
     let blns = if status.success() {
-        fs::read_to_string(out_dir.join("blns.json")).map_err(Into::into)
+        fs::read_to_string(out_dir.join("blns.txt")).map_err(Into::into)
     } else {
         Err(format!("`git clone {}` failed: {}", repo, status).into())
     };
@@ -48,6 +50,16 @@ fn fetch_blns_json(repo: &str) -> Result<String, Box<dyn Error>> {
     }
 
     blns
+}
+
+/// Extracts the strings from `blns.txt` the same way upstream's
+/// `scripts/txt_to_json.py` does: blank lines and `#` comments are skipped, and
+/// the empty string, which the file cannot express, comes first.
+fn parse(txt: &str) -> Vec<String> {
+    core::iter::once("")
+        .chain(txt.lines().filter(|l| !l.is_empty() && !l.starts_with('#')))
+        .map(String::from)
+        .collect()
 }
 
 fn render(blns: &[String]) -> String {

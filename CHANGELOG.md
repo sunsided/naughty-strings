@@ -4,6 +4,11 @@
 * The generator moved to the `make-lib` workspace member, so `serde_json` is
   no longer a dependency of the crate.
 * Use the 2021 edition.
+* Generate the list from upstream's canonical `blns.txt` instead of the stale
+  `blns.json`. This adds `constructor` and the Arabic `الكل في المجمو عة (5)`,
+  fixes RTL and Ogham strings that had stray trailing characters, and numbers
+  the XSS payloads (`alert(0)` to `alert(225)`) so a triggered alert identifies
+  its payload.
 
 # 0.2.4
 
