@@ -213,3 +213,97 @@ fn render(categories: &[Category]) -> Result<String, Box<dyn Error>> {
 
     Ok(output)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SAMPLE: &str = "\
+#\tFirst
+#
+#\tFirst description,
+#\tcontinued
+
+one
+
+# A note after a blank line, not followed by a bare `#`.
+two
+#\tAnother note
+#
+#\tthat is not after a blank line
+
+#\tSecond
+#
+#\tSecond description
+#
+#\tA table that is not part of the description
+
+three \t
+";
+
+    #[test]
+    fn parse_splits_categories_at_headers_only() {
+        let categories = parse(SAMPLE).unwrap();
+
+        let names: Vec<&str> = categories.iter().map(|c| c.name.as_str()).collect();
+        assert_eq!(names, ["First", "Second"]);
+        assert_eq!(categories[0].description, "First description, continued");
+        assert_eq!(categories[1].description, "Second description");
+    }
+
+    #[test]
+    fn parse_keeps_strings_verbatim_and_prepends_empty_string() {
+        let categories = parse(SAMPLE).unwrap();
+
+        assert_eq!(categories[0].strings, ["", "one", "two"]);
+        assert_eq!(categories[1].strings, ["three \t"]);
+    }
+
+    #[test]
+    fn parse_rejects_strings_before_first_category() {
+        assert!(parse("orphan\n\n#\tFirst\n#\n\none\n").is_err());
+        assert!(parse("").is_err());
+    }
+
+    #[test]
+    fn const_name_uppercases_and_joins_words() {
+        assert_eq!(
+            const_name("MSDOS/Windows Special Filenames"),
+            "MSDOS_WINDOWS_SPECIAL_FILENAMES"
+        );
+        assert_eq!(
+            const_name("Command Injection (Ruby)"),
+            "COMMAND_INJECTION_RUBY"
+        );
+        assert_eq!(const_name("jinja2 injection"), "JINJA2_INJECTION");
+    }
+
+    #[test]
+    fn link_urls_wraps_urls_without_trailing_punctuation() {
+        assert_eq!(
+            link_urls("(c.f. http://example.org/a.pdf)"),
+            "(c.f. <http://example.org/a.pdf>)"
+        );
+        assert_eq!(
+            link_urls("Credit: https://example.org/x."),
+            "Credit: <https://example.org/x>."
+        );
+        assert_eq!(link_urls("no links here"), "no links here");
+    }
+
+    #[test]
+    fn render_escapes_strings_and_lists_every_category() {
+        let output = render(&parse("#\tQuotes\n#\n\n\"\n\\\n").unwrap()).unwrap();
+
+        assert!(output.contains("    \"\\\"\",\n"));
+        assert!(output.contains("    \"\\\\\",\n"));
+        assert!(output.contains("    categories::QUOTES,\n"));
+        assert!(output.contains("pub const QUOTES: Category = Category {"));
+    }
+
+    #[test]
+    fn render_rejects_colliding_constant_names() {
+        let categories = parse("#\tA-B\n#\n\none\n\n#\tA B\n#\n\ntwo\n").unwrap();
+        assert!(render(&categories).is_err());
+    }
+}
